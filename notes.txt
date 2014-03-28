@@ -1,0 +1,8 @@
+Faire une "cross-validation" :
+
+EF1 : test1 -> app = 2-3-4-5
+EF2 : test2 -> app = 1-3-4-5
+...
+EF5 : test5 -> app = 1-2-3-4
+
+>>> EFmoy !
