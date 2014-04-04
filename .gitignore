@@ -1,3 +1,7 @@
+neg/
+pos/
+tagged/
+
 *.py[cod]
 
 # C extensions
