@@ -1,9 +1,13 @@
 import os
 import random
 from collections import defaultdict
+from math import log
 
 negativeDict = defaultdict(int)
 positiveDict = defaultdict(int)
+positiveProbabilities = defaultdict(int)
+negativeProbabilities = defaultdict(int)
+
 
 def training(positiveList, negativeList, negativeFile, positiveFile):
 	'''
@@ -30,18 +34,23 @@ def training(positiveList, negativeList, negativeFile, positiveFile):
 				positiveDict[w.rstrip('\r\n')] += 1
 				nPositive += 1
 
+	# Used for calculating probabilities
+	uniqueWordsList = set(positiveDict.keys()) | set(negativeDict.keys())
+	vocabularySize = len(uniqueWordsList)
 
-	vocabularySize = len(positiveDict.keys()) + len(negativeDict.keys())
+	# Iterating over all words.
+	for k in list(uniqueWordsList):
+		posNumerator = positiveDict[k] + 1 # Zero frequency problem solve
+		print posNumerator,'\n','pn'
+		posDenominator = nPositive + vocabularySize
+		print posDenominator,'\n','pd'
 
-	for k in list(set(positiveDict.keys()) + set(negativeDict.keys())):
-		num = positiveDict[k] + 1 # Zero frequency problem solve
-		den = nPositive + vocabularySize
+		positiveProbabilities[k] = log(float(posNumerator)/float(posDenominator))
 
-		positiveProbabilities[k] = num/den
+		negNumerator = negativeDict[k] + 1
+		negDenominator = nNegative + vocabularySize
 
-
-
-
+		negativeProbabilities[k] = log(float(negNumerator)/float(negDenominator))
 
 baseDir = os.path.dirname(os.path.realpath(__file__))
 positiveFiles = [os.path.join('pos', f) for f in os.listdir('pos')]
@@ -57,5 +66,5 @@ positiveFilesForTesting = list(set(positiveFiles) - set(positiveFilesForTraining
 negativeFilesForTesting = list(set(negativeFiles) - set(negativeFilesForTraining))
 
 training(positiveFilesForTraining, negativeFilesForTraining,'t','t')
-print(negativeDict)
-print(positiveDict)
+#print(negativeDict)
+#print(positiveDict)
