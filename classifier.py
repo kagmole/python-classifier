@@ -10,19 +10,36 @@ def training(positiveList, negativeList, negativeFile, positiveFile):
 	positiveFolder, negativeFolder -- (string) folders where positive and negative comments are
 	positiveFile, negativeFile -- (string) filenames where the values of each word will be written
 	'''
-	for f in positiveList:
-		file = open(f, 'r')
 
-		for l in file:
-			for w in l.split(" "):
-				negativeDict[w.rstrip('\r\n')] += 1
+	nPositive = 0
+	nNegative = 0
 
 	for f in negativeList:
 		file = open(f, 'r')
 
 		for l in file:
 			for w in l.split(" "):
+				negativeDict[w.rstrip('\r\n')] += 1
+				nNegative += 1
+
+	for f in positiveList:
+		file = open(f, 'r')
+
+		for l in file:
+			for w in l.split(" "):
 				positiveDict[w.rstrip('\r\n')] += 1
+				nPositive += 1
+
+
+	vocabularySize = len(positiveDict.keys()) + len(negativeDict.keys())
+
+	for k in list(set(positiveDict.keys()) + set(negativeDict.keys())):
+		num = positiveDict[k] + 1 # Zero frequency problem solve
+		den = nPositive + vocabularySize
+
+		positiveProbabilities[k] = num/den
+
+
 
 
 
