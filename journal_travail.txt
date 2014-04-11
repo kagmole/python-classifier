@@ -1,0 +1,10 @@
+04.04.14
+		Danick Fort
+	Fonction d'apprentissage commencée. Pour l'instant, crée un dictionnaire avec chaque mot rencontré et leur fréquence.
+		Dany Jupille
+	Squelette du code (classe Classifier). Chargement de la liste des mots à ignorer. Filtrage de la ponctuation dans les fichiers fournis.
+
+11.04.14
+		Danick Fort
+
+		Dany Jupille
