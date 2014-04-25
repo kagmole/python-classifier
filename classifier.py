@@ -7,6 +7,33 @@ negativeDict = defaultdict(int)
 positiveDict = defaultdict(int)
 positiveProbabilities = defaultdict(int)
 negativeProbabilities = defaultdict(int)
+ignoreList = []
+
+def loadIgnoreList(filePath):
+	ignoreList = []
+	
+	with open(filePath) as file:
+		for line in file:
+			# Axiom: 1 line = 1 word
+			ignoreList.append(line.strip())
+
+def generateTaggedFileIterator(filePath, ignoreList = []):
+    with open(filePath, encoding = "utf-8") as file:
+        for line in file:
+            # Axiom: 1 line = 3 words separate by whitespace
+            # Axiom: wordInfo[0] = original form
+            # Axiom: wordInfo[1] = word type
+            # Axiom: wordInfo[2] = primitive form
+            wordInfo = line.strip().split()
+
+            # Check axioms
+            if len(wordInfo) == 3:
+                # Ignore words in ignore list, punctuation and names
+                if wordInfo[2] not in ignoreList and \
+                   wordInfo[1] != 'PUN' and \
+                   wordInfo[1] != 'SENT' and \
+                   wordInfo[1] != 'NAM':
+                    yield wordInfo[2]
 
 def training(positiveList, negativeList, negativeFile, positiveFile):
 	'''
