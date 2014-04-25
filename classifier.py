@@ -8,7 +8,6 @@ positiveDict = defaultdict(int)
 positiveProbabilities = defaultdict(int)
 negativeProbabilities = defaultdict(int)
 
-
 def training(positiveList, negativeList, negativeFile, positiveFile):
 	'''
 	positiveFolder, negativeFolder -- (string) folders where positive and negative comments are
@@ -41,9 +40,7 @@ def training(positiveList, negativeList, negativeFile, positiveFile):
 	# Iterating over all words.
 	for k in list(uniqueWordsList):
 		posNumerator = positiveDict[k] + 1 # Zero frequency problem solve
-		print posNumerator,'\n','pn'
 		posDenominator = nPositive + vocabularySize
-		print posDenominator,'\n','pd'
 
 		positiveProbabilities[k] = log(float(posNumerator)/float(posDenominator))
 
@@ -51,6 +48,53 @@ def training(positiveList, negativeList, negativeFile, positiveFile):
 		negDenominator = nNegative + vocabularySize
 
 		negativeProbabilities[k] = log(float(negNumerator)/float(negDenominator))
+
+def classify(positiveFilesForTesting, negativeFilesForTesting):
+
+	classifiedNegativeFiles = defaultdict(bool)
+	classifiedPositiveFiles = defaultdict(bool)
+
+	for f in positiveFilesForTesting:
+		file = open(f, 'r')
+
+		fileIsNegative = float(1.0)
+		fileIsPositive = float(1.0)
+
+		for l in file:
+			for w in l.split(" "):
+				negProb = negativeDict[w.rstrip('\r\n')]
+				posProb = positiveDict[w.rstrip('\r\n')]
+				fileIsNegative *= 1 if negProb == 0 else negProb
+				fileIsPositive *= 1 if posProb == 0 else posProb
+		positive = fileIsPositive >= fileIsNegative
+		positiveText = "positive" if positive else "negative"
+		#print("file " + f + " is " + positiveText)
+
+		classifiedPositiveFiles[f] = positive
+
+	size = len([i for i in classifiedPositiveFiles.values() if i]) / float(len(positiveFilesForTesting))
+
+	print("Succes avec les fichiers positif : " + str(size*100))
+
+	for f in negativeFilesForTesting:
+		file = open(f, 'r')
+
+		fileIsNegative = 1.0
+		fileIsPositive = 1.0
+
+		for l in file:
+			for w in l.split(" "):
+				negProb = negativeDict[w.rstrip('\r\n')]
+				posProb = positiveDict[w.rstrip('\r\n')]
+				fileIsNegative *= 1 if negProb == 0 else negProb
+				fileIsPositive *= 1 if posProb == 0 else posProb
+		positive = fileIsPositive >= fileIsNegative
+		positiveText = "positive" if positive else "negative"
+		#print("file " + f + " is " + positiveText)
+		classifiedNegativeFiles[f] = positive
+	size = len([i for i in classifiedNegativeFiles.values() if not i]) / float(len(classifiedNegativeFiles))
+	
+	print("Succes avec les fichiers negatif : " + str(size*100))
 
 baseDir = os.path.dirname(os.path.realpath(__file__))
 positiveFiles = [os.path.join('pos', f) for f in os.listdir('pos')]
@@ -66,5 +110,8 @@ positiveFilesForTesting = list(set(positiveFiles) - set(positiveFilesForTraining
 negativeFilesForTesting = list(set(negativeFiles) - set(negativeFilesForTraining))
 
 training(positiveFilesForTraining, negativeFilesForTraining,'t','t')
+
+classify(positiveFilesForTesting, negativeFilesForTesting)
+
 #print(negativeDict)
 #print(positiveDict)
