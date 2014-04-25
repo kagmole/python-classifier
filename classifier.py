@@ -10,15 +10,13 @@ negativeProbabilities = defaultdict(int)
 ignoreList = []
 
 def loadIgnoreList(filePath):
-	ignoreList = []
-	
 	with open(filePath) as file:
 		for line in file:
 			# Axiom: 1 line = 1 word
 			ignoreList.append(line.strip())
 
 def generateTaggedFileIterator(filePath, ignoreList = []):
-    with open(filePath, encoding = "utf-8") as file:
+    with open(filePath) as file:
         for line in file:
             # Axiom: 1 line = 3 words separate by whitespace
             # Axiom: wordInfo[0] = original form
@@ -35,7 +33,7 @@ def generateTaggedFileIterator(filePath, ignoreList = []):
                    wordInfo[1] != 'NAM':
                     yield wordInfo[2]
 
-def training(positiveList, negativeList, negativeFile, positiveFile):
+def training(positiveList, negativeList):
 	'''
 	positiveFolder, negativeFolder -- (string) folders where positive and negative comments are
 	positiveFile, negativeFile -- (string) filenames where the values of each word will be written
@@ -43,22 +41,16 @@ def training(positiveList, negativeList, negativeFile, positiveFile):
 
 	nPositive = 0
 	nNegative = 0
-
+	
 	for f in negativeList:
-		file = open(f, 'r')
-
-		for l in file:
-			for w in l.split(" "):
-				negativeDict[w.rstrip('\r\n')] += 1
-				nNegative += 1
+		for w in generateTaggedFileIterator(f, ignoreList):
+			negativeDict[w] += 1
+			nNegative += 1
 
 	for f in positiveList:
-		file = open(f, 'r')
-
-		for l in file:
-			for w in l.split(" "):
-				positiveDict[w.rstrip('\r\n')] += 1
-				nPositive += 1
+		for w in generateTaggedFileIterator(f, ignoreList):
+			positiveDict[w] += 1
+			nPositive += 1
 
 	# Used for calculating probabilities
 	uniqueWordsList = set(positiveDict.keys()) | set(negativeDict.keys())
@@ -87,12 +79,13 @@ def classify(positiveFilesForTesting, negativeFilesForTesting):
 		fileIsNegative = float(1.0)
 		fileIsPositive = float(1.0)
 
-		for l in file:
-			for w in l.split(" "):
-				negProb = negativeDict[w.rstrip('\r\n')]
-				posProb = positiveDict[w.rstrip('\r\n')]
-				fileIsNegative *= 1 if negProb == 0 else negProb
-				fileIsPositive *= 1 if posProb == 0 else posProb
+		for w in generateTaggedFileIterator(f, ignoreList):
+			negProb = negativeDict[w]
+			posProb = positiveDict[w]
+
+			fileIsNegative *= 1 if negProb == 0 else negProb
+			fileIsPositive *= 1 if posProb == 0 else posProb
+
 		positive = fileIsPositive >= fileIsNegative
 		positiveText = "positive" if positive else "negative"
 		#print("file " + f + " is " + positiveText)
@@ -109,23 +102,25 @@ def classify(positiveFilesForTesting, negativeFilesForTesting):
 		fileIsNegative = 1.0
 		fileIsPositive = 1.0
 
-		for l in file:
-			for w in l.split(" "):
-				negProb = negativeDict[w.rstrip('\r\n')]
-				posProb = positiveDict[w.rstrip('\r\n')]
-				fileIsNegative *= 1 if negProb == 0 else negProb
-				fileIsPositive *= 1 if posProb == 0 else posProb
+		for w in generateTaggedFileIterator(f, ignoreList):
+			negProb = negativeDict[w]
+			posProb = positiveDict[w]
+
+			fileIsNegative *= 1 if negProb == 0 else negProb
+			fileIsPositive *= 1 if posProb == 0 else posProb
+
 		positive = fileIsPositive >= fileIsNegative
 		positiveText = "positive" if positive else "negative"
 		#print("file " + f + " is " + positiveText)
+		
 		classifiedNegativeFiles[f] = positive
 	size = len([i for i in classifiedNegativeFiles.values() if not i]) / float(len(classifiedNegativeFiles))
 	
 	print("Succes avec les fichiers negatif : " + str(size*100))
 
 baseDir = os.path.dirname(os.path.realpath(__file__))
-positiveFiles = [os.path.join('pos', f) for f in os.listdir('pos')]
-negativeFiles = [os.path.join('neg', f) for f in os.listdir('neg')]
+positiveFiles = [os.path.join('tagged/pos', f) for f in os.listdir('tagged/pos')]
+negativeFiles = [os.path.join('tagged/neg', f) for f in os.listdir('tagged/neg')]
 
 random.shuffle(positiveFiles)
 random.shuffle(negativeFiles)
@@ -136,7 +131,9 @@ negativeFilesForTraining = negativeFiles[:int(len(negativeFiles)*0.8)]
 positiveFilesForTesting = list(set(positiveFiles) - set(positiveFilesForTraining))
 negativeFilesForTesting = list(set(negativeFiles) - set(negativeFilesForTraining))
 
-training(positiveFilesForTraining, negativeFilesForTraining,'t','t')
+loadIgnoreList("frenchST.txt")
+
+training(positiveFilesForTraining, negativeFilesForTraining)
 
 classify(positiveFilesForTesting, negativeFilesForTesting)
 
