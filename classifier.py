@@ -10,6 +10,12 @@ negativeProbabilities = defaultdict(int)
 ignoreList = []
 
 def loadIgnoreList(filePath):
+	'''
+	Loads global array ignoreList with words to ignore, from filePath
+
+	@params(filePath) -- (string) The path of the file that contains the words to ignore, separated by a new line.
+	@return void
+	'''
 	with open(filePath) as file:
 		for line in file:
 			# Axiom: 1 line = 1 word
@@ -35,13 +41,16 @@ def generateTaggedFileIterator(filePath, ignoreList = []):
 
 def training(positiveList, negativeList):
 	'''
-	positiveFolder, negativeFolder -- (string) folders where positive and negative comments are
-	positiveFile, negativeFile -- (string) filenames where the values of each word will be written
+	Trains the Bayes classifier with all the files provided in the parameters.
+	Fills global dictionaries positiveDict and negativeDict with probabilities for each word found in the files.
+
+	@params(positiveList, negativeList) -- (array of string, array of string) Arrays with positive/negative file paths
+	@return void
 	'''
 
 	nPositive = 0
 	nNegative = 0
-	
+
 	for f in negativeList:
 		for w in generateTaggedFileIterator(f, ignoreList):
 			negativeDict[w] += 1
@@ -69,7 +78,12 @@ def training(positiveList, negativeList):
 		negativeProbabilities[k] = log(float(negNumerator)/float(negDenominator))
 
 def classify(positiveFilesForTesting, negativeFilesForTesting):
+	'''
+	Classifies the files given in the parameters and returns the success rate of the classification for each class, positive and negative.
 
+	@params(positiveFilesForTesting, negativeFilesForTesting) -- (array of string, array of string) Arrays with positive/negative file paths
+	@return(int) -- The average success rate of the positive and negative classification
+	'''
 	classifiedNegativeFiles = defaultdict(bool)
 	classifiedPositiveFiles = defaultdict(bool)
 
@@ -92,9 +106,9 @@ def classify(positiveFilesForTesting, negativeFilesForTesting):
 
 		classifiedPositiveFiles[f] = positive
 
-	size = len([i for i in classifiedPositiveFiles.values() if i]) / float(len(positiveFilesForTesting))
+	successRatePositive = len([i for i in classifiedPositiveFiles.values() if i]) / float(len(positiveFilesForTesting))
 
-	print("Succes avec les fichiers positif : " + str(size*100))
+	print("Success with positive files : " + str(successRatePositive*100))
 
 	for f in negativeFilesForTesting:
 		file = open(f, 'r')
@@ -114,9 +128,12 @@ def classify(positiveFilesForTesting, negativeFilesForTesting):
 		#print("file " + f + " is " + positiveText)
 		
 		classifiedNegativeFiles[f] = positive
-	size = len([i for i in classifiedNegativeFiles.values() if not i]) / float(len(classifiedNegativeFiles))
+	successRateNegative= len([i for i in classifiedNegativeFiles.values() if not i]) / float(len(classifiedNegativeFiles))
 	
-	print("Succes avec les fichiers negatif : " + str(size*100))
+	print("Success with negative files : " + str(successRateNegative*100))
+
+	return (successRatePositive + successRateNegative) / 2
+
 
 baseDir = os.path.dirname(os.path.realpath(__file__))
 positiveFiles = [os.path.join('tagged/pos', f) for f in os.listdir('tagged/pos')]
@@ -135,7 +152,9 @@ loadIgnoreList("frenchST.txt")
 
 training(positiveFilesForTraining, negativeFilesForTraining)
 
-classify(positiveFilesForTesting, negativeFilesForTesting)
+success = classify(positiveFilesForTesting, negativeFilesForTesting)
+
+print("The average success rate is : " + str(success*100))
 
 #print(negativeDict)
 #print(positiveDict)
