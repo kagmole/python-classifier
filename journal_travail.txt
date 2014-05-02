@@ -8,3 +8,16 @@
 		Danick Fort
 	Finition de la fonction d'apprentissage.
 		Dany Jupille
+	Version classe de l'apprentissage, première itération
+
+25.04.14
+		Danick Fort
+	Version procédurale complète (division)
+		Dany Jupille
+	Version classe : ajout d'un générateur avec ignoreList et gestion des tags
+
+02.05.2014
+		Danick Fort
+	Technique de Cross-validation implémentée en procédural
+		Dany Jupille
+	Version classe de l'application complète. Tableaux Excel des pourcentages de réussite. 
