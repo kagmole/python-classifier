@@ -164,7 +164,66 @@ if __name__ == '__main__':
 #                                                                              #
 #------------------------------------------------------------------------------#
 
-    
+    def crossValidation(positiveFilePathsList, negativeFilePathsList):
+        successes = []
+
+        for i in range(0,10):
+            myClassifier = BayesClassifier(True)
+            myClassifier.addIgnoreListContent('ignore-list.txt')
+
+            random.shuffle(positiveFilePathsList)
+            random.shuffle(negativeFilePathsList)
+
+            startSlice = int(len(positiveFilePathsList) * 0.1 * i)
+            endSlice = int(len(positiveFilePathsList) * 0.1 * (i+1))
+            print(startSlice, endSlice)
+
+            positiveFilePathsListForTesting = positiveFilePathsList[startSlice:endSlice]
+            negativeFilePathsListForTesting = negativeFilePathsList[startSlice:endSlice]
+
+            positiveFilePathsListForTraining = list(set(positiveFilePathsList) - set(positiveFilePathsListForTesting))
+            negativeFilePathsListForTraining = list(set(negativeFilePathsList) - set(negativeFilePathsListForTesting))
+
+            for filePath in positiveFilePathsListForTraining:
+                myClassifier.addTrainingContent('positive', filePath)
+
+            for filePath in negativeFilePathsListForTraining:
+                myClassifier.addTrainingContent('negative', filePath)
+
+            myClassifier.doTraining()
+
+            positivesCount = 0
+            positivesFound = 0
+            
+            negativesCount = 0
+            negativesFound = 0
+            
+            for filePath in positiveFilePathsListForTesting:
+                classificationResult = myClassifier.classify(filePath)
+
+                positivesCount += 1
+                
+                if classificationResult == 'positive':
+                    positivesFound += 1
+
+                #print('-> "{0}" SHOULD BE "positive", GOT "{1}"'.format(filePath, classificationResult))
+
+            for filePath in negativeFilePathsListForTesting:
+                classificationResult = myClassifier.classify(filePath)
+
+                negativesCount += 1
+                
+                if classificationResult == 'negative':
+                    negativesFound += 1
+
+                #print('-> "{0}" SHOULD BE "negative", GOT "{1}"'.format(filePath, classificationResult))
+
+            print(str(i) + '-> Positives found: {:.2%}'.format((positivesFound / positivesCount)))
+            print(str(i) + '-> Negatives found: {:.2%}'.format((negativesFound / negativesCount)))
+            successes.append((float(positivesFound / positivesCount) + float(negativesFound / negativesCount))/2)
+        print (sum(successes)/float(len(successes)))
+        return sum(successes)/float(len(successes))
+
 
 #------------------------------------------------------------------------------#
 #                                                                              #
@@ -185,6 +244,8 @@ if __name__ == '__main__':
     print('-> CHOOSING TRAINING AND TESTING FILES...', end = '')
     positiveFilePathsList = [os.path.join('tagged-files/pos', filePath) for filePath in os.listdir('tagged-files/pos')]
     negativeFilePathsList = [os.path.join('tagged-files/neg', filePath) for filePath in os.listdir('tagged-files/neg')]
+
+    crossValidation(positiveFilePathsList, negativeFilePathsList)
 
     random.shuffle(positiveFilePathsList)
     random.shuffle(negativeFilePathsList)
