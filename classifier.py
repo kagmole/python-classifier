@@ -1,141 +1,242 @@
+#!/usr/bin/env python
+# -*- coding: latin-1 -*-
+
+#------------------------------------------------------------------------------#
+# Positive or negative text classifier with the Bayes method                   #
+# ============================================================================ #
+# Organization: HE-Arc Engineering                                             #
+# Developer(s): Danick Fort                                                    #
+#               Dany Jupille                                                   #
+#                                                                              #
+# Filename:     classifier.py                                                  #
+# Description:  #N/A                                                           #
+# Version:      1.0                                                            #
+#------------------------------------------------------------------------------#
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+# ------------------------------ GLOBAL SECTION ------------------------------ #
+#                                                                              #
+#------------------------------------------------------------------------------#
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+#                               LIBRARIES IMPORT                               #
+#                                                                              #
+#------------------------------------------------------------------------------#
+
 import os
 import random
+import re
+import string
+import sys
+
 from collections import defaultdict
 from math import log
 
-negativeDict = defaultdict(int)
-positiveDict = defaultdict(int)
-positiveProbabilities = defaultdict(int)
-negativeProbabilities = defaultdict(int)
-ignoreList = []
+#------------------------------------------------------------------------------#
+#                                                                              #
+#                                   CLASSES                                    #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
-def loadIgnoreList(filePath):
-	with open(filePath) as file:
-		for line in file:
-			# Axiom: 1 line = 1 word
-			ignoreList.append(line.strip())
+class BayesClass(object):
 
-def generateTaggedFileIterator(filePath, ignoreList = []):
-    with open(filePath) as file:
-        for line in file:
-            # Axiom: 1 line = 3 words separate by whitespace
-            # Axiom: wordInfo[0] = original form
-            # Axiom: wordInfo[1] = word type
-            # Axiom: wordInfo[2] = primitive form
-            wordInfo = line.strip().split()
+    def __init__(self):
+        self._nbWords = 0
+        self._wordsDictionary = defaultdict(int)
+        self._wordsDictionaryProbability = defaultdict(float)
 
-            # Check axioms
-            if len(wordInfo) == 3:
-                # Ignore words in ignore list, punctuation and names
-                if wordInfo[2] not in ignoreList and \
-                   wordInfo[1] != 'PUN' and \
-                   wordInfo[1] != 'SENT' and \
-                   wordInfo[1] != 'NAM':
-                    yield wordInfo[2]
+    def addWord(self, word):
+        self._nbWords += 1
+        self._wordsDictionary[word] += 1
 
-def training(positiveList, negativeList):
-	'''
-	positiveFolder, negativeFolder -- (string) folders where positive and negative comments are
-	positiveFile, negativeFile -- (string) filenames where the values of each word will be written
-	'''
+    def getNbWords(self):
+        return self._nbWords
 
-	nPositive = 0
-	nNegative = 0
-	
-	for f in negativeList:
-		for w in generateTaggedFileIterator(f, ignoreList):
-			negativeDict[w] += 1
-			nNegative += 1
+    def getWordsDictionary(self):
+        return self._wordsDictionary
 
-	for f in positiveList:
-		for w in generateTaggedFileIterator(f, ignoreList):
-			positiveDict[w] += 1
-			nPositive += 1
+    def getWordsDictionaryProbability(self):
+        return self._wordsDictionaryProbability
 
-	# Used for calculating probabilities
-	uniqueWordsList = set(positiveDict.keys()) | set(negativeDict.keys())
-	vocabularySize = len(uniqueWordsList)
+class BayesClassifier(object):
 
-	# Iterating over all words.
-	for k in list(uniqueWordsList):
-		posNumerator = positiveDict[k] + 1 # Zero frequency problem solve
-		posDenominator = nPositive + vocabularySize
+    def __init__(self, filesTagged = False):
+        self._bayesClasses = {}
+        self._ignoreList = set()
+        self._vocabularyList = set()
+        self._filesTagged = filesTagged
 
-		positiveProbabilities[k] = log(float(posNumerator)/float(posDenominator))
+    def addIgnoreListContent(self, filePath):
+        self._ignoreList = []
+        
+        with open(filePath, encoding = "utf-8") as file:
+            for line in file:
+                # Axiom: 1 line = 1 word
+                self._ignoreList.append(line.strip())
 
-		negNumerator = negativeDict[k] + 1
-		negDenominator = nNegative + vocabularySize
+    def emptyIgnoreList(self):
+        self._ignoreList = set()
 
-		negativeProbabilities[k] = log(float(negNumerator)/float(negDenominator))
+    def addTrainingContent(self, className, filePath):
+        if className not in self._bayesClasses:
+            self._bayesClasses[className] = BayesClass()
 
-def classify(positiveFilesForTesting, negativeFilesForTesting):
+        for word in generateTaggedFileIterator(filePath, self._filesTagged, self._ignoreList):
+            self._bayesClasses[className].addWord(word)
+            self._vocabularyList.add(word)
 
-	classifiedNegativeFiles = defaultdict(bool)
-	classifiedPositiveFiles = defaultdict(bool)
+    def doTraining(self):
+        vocabularySize = len(self._vocabularyList)
+        
+        for word in self._vocabularyList:
+            for bayesClass in self._bayesClasses.values():
+                numerator = bayesClass.getWordsDictionary()[word] + 1
+                denominator = bayesClass.getNbWords() + vocabularySize
 
-	for f in positiveFilesForTesting:
-		file = open(f, 'r')
+                bayesClass.getWordsDictionaryProbability()[word] = log(float(numerator) / float(denominator))
 
-		fileIsNegative = float(1.0)
-		fileIsPositive = float(1.0)
+    def emptyTraining(self):
+        self._bayesClasses = {}
+        self._vocabularyList = set()
+        
+    def classify(self, filePath):
+        fileBayesClassProbability = defaultdict(float)
+        
+        for word in generateTaggedFileIterator(filePath, self._filesTagged, self._ignoreList):
+            for bayesClassName, bayesClass in self._bayesClasses.items():
+                fileBayesClassProbability[bayesClassName] += bayesClass.getWordsDictionaryProbability()[word]
 
-		for w in generateTaggedFileIterator(f, ignoreList):
-			negProb = negativeDict[w]
-			posProb = positiveDict[w]
+        return max(fileBayesClassProbability, key = fileBayesClassProbability.get)
 
-			fileIsNegative *= 1 if negProb == 0 else negProb
-			fileIsPositive *= 1 if posProb == 0 else posProb
+#------------------------------------------------------------------------------#
+#                                                                              #
+#                             UTILITIES FUNCTIONS                              #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
-		positive = fileIsPositive >= fileIsNegative
-		positiveText = "positive" if positive else "negative"
-		#print("file " + f + " is " + positiveText)
+def generateTaggedFileIterator(filePath, filesTagged, ignoreList = []):
+    if filesTagged:
+        with open(filePath, encoding = 'utf-8') as file:
+            for line in file:
+                # Axiom: 1 line = 3 words separate by whitespace
+                # Axiom: wordInfo[0] = original form
+                # Axiom: wordInfo[1] = word type
+                # Axiom: wordInfo[2] = primitive form
+                wordInfo = line.strip().split()
 
-		classifiedPositiveFiles[f] = positive
+                # Check axioms
+                if len(wordInfo) == 3:
+                    # Ignore words in ignore list, punctuation and names
+                    if wordInfo[2] not in ignoreList and \
+                       wordInfo[1] != 'PUN' and \
+                       wordInfo[1] != 'SENT' and \
+                       wordInfo[1] != 'NAM':
+                        yield wordInfo[2]
+    else:        
+        with open(filePath, encoding = 'utf-8') as file:
+            # Prepare a translation table for punctuation removal
+            noPunctuationTranstable = str.maketrans('', '', string.punctuation)
+            
+            for line in file:
+                # Remove punctuation
+                line = line.translate(noPunctuationTranstable)
 
-	size = len([i for i in classifiedPositiveFiles.values() if i]) / float(len(positiveFilesForTesting))
+                # Split line into words array and remove whitespaces
+                words = line.strip().split()
+                
+                for word in words:
+                    yield word
 
-	print("Succes avec les fichiers positif : " + str(size*100))
+#------------------------------------------------------------------------------#
+#                                                                              #
+# ------------------------------- MAIN SECTION ------------------------------- #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
-	for f in negativeFilesForTesting:
-		file = open(f, 'r')
+# If this is the main module, run this
+if __name__ == '__main__':
 
-		fileIsNegative = 1.0
-		fileIsPositive = 1.0
+#------------------------------------------------------------------------------#
+#                                                                              #
+#                             UTILITIES FUNCTIONS                              #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
-		for w in generateTaggedFileIterator(f, ignoreList):
-			negProb = negativeDict[w]
-			posProb = positiveDict[w]
+    
 
-			fileIsNegative *= 1 if negProb == 0 else negProb
-			fileIsPositive *= 1 if posProb == 0 else posProb
+#------------------------------------------------------------------------------#
+#                                                                              #
+#                                    #NAME?                                    #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
-		positive = fileIsPositive >= fileIsNegative
-		positiveText = "positive" if positive else "negative"
-		#print("file " + f + " is " + positiveText)
-		
-		classifiedNegativeFiles[f] = positive
-	size = len([i for i in classifiedNegativeFiles.values() if not i]) / float(len(classifiedNegativeFiles))
-	
-	print("Succes avec les fichiers negatif : " + str(size*100))
+    print('[APPLICATION STARTED]')
 
-baseDir = os.path.dirname(os.path.realpath(__file__))
-positiveFiles = [os.path.join('tagged/pos', f) for f in os.listdir('tagged/pos')]
-negativeFiles = [os.path.join('tagged/neg', f) for f in os.listdir('tagged/neg')]
+    print('-> CREATING BAYES CLASSIFIER...', end = '')
+    myClassifier = BayesClassifier(True)
+    print('DONE')
 
-random.shuffle(positiveFiles)
-random.shuffle(negativeFiles)
+    print('-> LOADING IGNORE-LIST...', end = '')
+    myClassifier.addIgnoreListContent('ignore-list.txt')
+    print('DONE')
 
-positiveFilesForTraining = positiveFiles[:int(len(positiveFiles)*0.8)]
-negativeFilesForTraining = negativeFiles[:int(len(negativeFiles)*0.8)]
+    print('-> CHOOSING TRAINING AND TESTING FILES...', end = '')
+    positiveFilePathsList = [os.path.join('tagged-files/pos', filePath) for filePath in os.listdir('tagged-files/pos')]
+    negativeFilePathsList = [os.path.join('tagged-files/neg', filePath) for filePath in os.listdir('tagged-files/neg')]
 
-positiveFilesForTesting = list(set(positiveFiles) - set(positiveFilesForTraining))
-negativeFilesForTesting = list(set(negativeFiles) - set(negativeFilesForTraining))
+    random.shuffle(positiveFilePathsList)
+    random.shuffle(negativeFilePathsList)
 
-loadIgnoreList("frenchST.txt")
+    positiveFilePathsListForTraining = positiveFilePathsList[:int(len(positiveFilePathsList) * 0.8)]
+    negativeFilePathsListForTraining = negativeFilePathsList[:int(len(negativeFilePathsList) * 0.8)]
 
-training(positiveFilesForTraining, negativeFilesForTraining)
+    positiveFilePathsListForTesting = list(set(positiveFilePathsList) - set(positiveFilePathsListForTraining))
+    negativeFilePathsListForTesting = list(set(negativeFilePathsList) - set(negativeFilePathsListForTraining))
+    print('DONE')
 
-classify(positiveFilesForTesting, negativeFilesForTesting)
+    print('-> STARTING TRAINING...', end = '')
+    for filePath in positiveFilePathsListForTraining:
+        myClassifier.addTrainingContent('positive', filePath)
 
-#print(negativeDict)
-#print(positiveDict)
+    for filePath in negativeFilePathsListForTraining:
+        myClassifier.addTrainingContent('negative', filePath)
+
+    myClassifier.doTraining()
+    print('DONE')
+
+    print('[CLASSIFICATION STARTED]')
+
+    positivesCount = 0
+    positivesFound = 0
+    
+    negativesCount = 0
+    negativesFound = 0
+    
+    for filePath in positiveFilePathsListForTesting:
+        classificationResult = myClassifier.classify(filePath)
+
+        positivesCount += 1
+        
+        if classificationResult == 'positive':
+            positivesFound += 1
+
+        #print('-> "{0}" SHOULD BE "positive", GOT "{1}"'.format(filePath, classificationResult))
+
+    for filePath in negativeFilePathsListForTesting:
+        classificationResult = myClassifier.classify(filePath)
+
+        negativesCount += 1
+        
+        if classificationResult == 'negative':
+            negativesFound += 1
+
+        #print('-> "{0}" SHOULD BE "negative", GOT "{1}"'.format(filePath, classificationResult))
+        
+    print('[CLASSIFICATION ENDED]')
+
+    print('-> Positives found: {:.2%}'.format((positivesFound / positivesCount)))
+    print('-> Negatives found: {:.2%}'.format((negativesFound / negativesCount)))
+
+    print('[APPLICATION ENDED]')
