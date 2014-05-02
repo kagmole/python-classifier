@@ -336,14 +336,14 @@ if __name__ == '__main__':
     doCrossValidation(myClassifier, positiveTaggedFilePathsList, negativeTaggedFilePathsList)
     print('  [CROSS-VALIDATION WITH ORDERED TAGGED FILES ENDED]')
 
-    # Reset training and set tagged files flag to False
+    # Next files are untagged
     myClassifier.setFilesTagged(False)
 
     print('  [CROSS-VALIDATION WITH ORDERED UNTAGGED FILES STARTED]')
     doCrossValidation(myClassifier, positiveUntaggedFilePathsList, negativeUntaggedFilePathsList)
     print('  [CROSS-VALIDATION WITH ORDERED UNTAGGED FILES ENDED]')
 
-    # Reset training and set tagged files flag to True
+    # Next files are tagged
     myClassifier.setFilesTagged(True)
 
     # Shuffle files paths for random cross-validation
@@ -356,7 +356,7 @@ if __name__ == '__main__':
     doCrossValidation(myClassifier, positiveTaggedFilePathsList, negativeTaggedFilePathsList)
     print('  [CROSS-VALIDATION WITH RANDOM TAGGED FILES ENDED]')
 
-    # Reset training and set tagged files flag to True
+    # Next files are untagged
     myClassifier.setFilesTagged(False)
 
     print('  [CROSS-VALIDATION WITH RANDOM UNTAGGED FILES STARTED]')
